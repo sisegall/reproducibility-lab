@@ -1,10 +1,10 @@
 ---
 title: "Reproducibility Report: Maglio & Polman (2014), Study 1"
 subtitle: "Bumper-rails version"
-author: "Your name here"
+author: "Sarah Segall"
 date: today
 format:
-  html:
+  pdf:
     toc: true
     toc-location: left
     embed-resources: true
@@ -110,6 +110,8 @@ d <- d |>
     DIRECTION = factor(DIRECTION),
     STN_NAME = factor(STN_NAME, levels = c("SPAD", "STG", "B-Y", "SHER"))
   )
+
+glimpse(d)
 ```
 
 ## Step 4: Reproduce the analysis
@@ -121,7 +123,7 @@ Count the participants in each direction × station combination. Replace each
 
 ```{r}
 d |>
-  count("FIXME", "FIXME")
+  count(DIRECTION, STN_NAME)
 ```
 
 Does this match the sample size in the paper (202 total, 101 per platform)?
@@ -137,7 +139,7 @@ Fill in the formula with the outcome (the distance rating) and the two
 predictors.
 
 ```{r}
-mod <- aov(FIXME ~ FIXME * FIXME, data = d)
+mod <- aov(DISTANCE ~ DIRECTION * STN_NAME, data = d)
 
 summary(mod)
 ```
@@ -179,8 +181,9 @@ ss_residual <- anova_table |>
 
 anova_table |>
   filter(term != "Residuals") |>
-  mutate(partial_eta_sq = "FIXME") |>
+  mutate(partial_eta_sq = sumsq / (sumsq + ss_residual)) |>
   select(term, df, statistic, p.value, partial_eta_sq)
+
 ```
 
 Do your ηp² values round to the paper's .27 (station) and .20 (interaction)?
@@ -199,20 +202,30 @@ SS_direction / SS_total.
 
 # 1. Keep only the St. George ratings
 st_george <- d |>
-  filter("FIXME")
+  filter(STN_NAME == "STG")
 
 # 2. Which group rated St. George as farther away, eastbound or westbound?
 #    No statistics yet, just the mean rating in each direction.
 st_george |>
-  group_by("FIXME") |>
-  summarize(mean_distance = "FIXME", n = n())
+  group_by(DIRECTION) |>
+  summarize(mean_distance = mean(DISTANCE), n = n())
 
 # 3. One-way ANOVA: distance predicted by direction
-st_george_mod <- aov("FIXME", data = st_george)
-tidy(st_george_mod)
+st_george_mod <- aov(DISTANCE ~ DIRECTION, data = st_george)
+
+st_george_table <- tidy(st_george_mod)
+st_george_table
 
 # 4. Partial eta squared (reuse your code from above)
-"FIXME"
+st_george_residual <- st_george_table |>
+  filter(term == "Residuals") |>
+  pull(sumsq)
+
+st_george_table |>
+  filter(term != "Residuals") |>
+  mutate(partial_eta_sq = sumsq / (sumsq + st_george_residual)) |>
+  select(term, df, statistic, p.value, partial_eta_sq)
+
 ```
 
 #### Spadina, Bloor-Yonge, and Sherbourne
@@ -224,15 +237,84 @@ chunk three times works. If you want to try something tidier, the
 ```{r}
 #| label: spadina
 
+# 1. Keep only the spadina ratings
+spadina <- d |>
+  filter(STN_NAME == "SPAD")
+
+# 2. Which group rated St. George as farther away, eastbound or westbound?
+#    No statistics yet, just the mean rating in each direction.
+spadina |>
+  group_by(DIRECTION) |>
+  summarize(mean_distance = mean(DISTANCE), n = n())
+
+# 3. One-way ANOVA: distance predicted by direction
+spadina_mod <- aov(DISTANCE ~ DIRECTION, data = spadina)
+
+spadina_table <- tidy(spadina_mod)
+spadina_table
+
+# 4. Partial eta squared (reuse your code from above)
+spadina_residual <- spadina_table |>
+  filter(term == "Residuals") |>
+  pull(sumsq)
+
+spadina_table |>
+  filter(term != "Residuals") |>
+  mutate(partial_eta_sq = sumsq / (sumsq + spadina_residual)) |>
+  select(term, df, statistic, p.value, partial_eta_sq)
+
 ```
 
 ```{r}
 #| label: bloor-yonge
 
+bloor_yonge <- d |>
+  filter(STN_NAME == "B-Y")
+
+bloor_yonge |>
+  group_by(DIRECTION) |>
+  summarize(mean_distance = mean(DISTANCE), n = n())
+
+bloor_yonge_mod <- aov(DISTANCE ~ DIRECTION, data = bloor_yonge)
+
+bloor_yonge_table <- tidy(bloor_yonge_mod)
+bloor_yonge_table
+
+bloor_yonge_residual <- bloor_yonge_table |>
+  filter(term == "Residuals") |>
+  pull(sumsq)
+
+bloor_yonge_table |>
+  filter(term != "Residuals") |>
+  mutate(partial_eta_sq = sumsq / (sumsq + bloor_yonge_residual)) |>
+  select(term, df, statistic, p.value, partial_eta_sq)
+
 ```
 
 ```{r}
 #| label: sherbourne
+
+sherbourne <- d |>
+  filter(STN_NAME == "SHER")
+
+sherbourne |>
+  group_by(DIRECTION) |>
+  summarize(mean_distance = mean(DISTANCE), n = n())
+
+sherbourne_mod <- aov(DISTANCE ~ DIRECTION, data = sherbourne)
+
+sherbourne_table <- tidy(sherbourne_mod)
+sherbourne_table
+
+sherbourne_residual <- sherbourne_table |>
+  filter(term == "Residuals") |>
+  pull(sumsq)
+
+sherbourne_table |>
+  filter(term != "Residuals") |>
+  mutate(partial_eta_sq = sumsq / (sumsq + sherbourne_residual)) |>
+  select(term, df, statistic, p.value, partial_eta_sq)
+
 
 ```
 
@@ -240,26 +322,27 @@ Fill in this table as you go:
 
 | Station | Paper *p* | Your *p* | Paper ηp² | Your ηp² |
 |---|---|---|---|---|
-| St. George | < .001 | | .28 | |
-| Spadina | .001 | | .20 | |
-| Bloor-Yonge | .053 | | .08 | |
-| Sherbourne | < .001 | | .24 | |
+| St. George | < .001 | < .001 | .28 | .28 |
+| Spadina | .001 | .001 | .20 | .20 |
+| Bloor-Yonge | .053 | .053 | .08 | .08 |
+| Sherbourne | < .001 | < .001 | .24 | .24 |
+
 
 ## Step 5: Reflection
 
 Were you able to reproduce the results you attempted to reproduce? If not, which
 parts could you not reproduce?
 
-> ANSWER HERE
+> I was able to replicate the interaction effect and find no main effect of orientation. I was also able to reproduce the p-values and partial theta squared vlaues for all four station-by-station comparisons. I could *not* reproduce the F value for the main effect of station - I got F(3, 194) = 23.35 and the paper reports 24.10.
 
 How difficult was it to reproduce the results?
 
-> ANSWER HERE
+> It was not bad because the dataset was organized. The whole analysis is one ANOVA and four follow-up tests. 
 
 What made it hard, and what made it easy? Think about the data files, the
 variable names, and how much the paper told you about the analysis.
 
-> ANSWER HERE
+> It was easy in that the authors posted the raw data and had their data organized by study. The paper also reported all of the relevant statistics which was good. It was difficult in that the paper did not mention the software they used. It was also a little confusing that the paper called the factor orientation rather than direction and that the station names were all abbreviated.
 
 ## Bonus questions
 
